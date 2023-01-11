@@ -23,30 +23,34 @@ public:
 
 class PerFrameFunctionCaller {
 public:
-	virtual void SetTimeBudgetPerFrame(double Milliseconds) = 0;
-	virtual void SetFunctionToCallFromObjects() = 0;
-	virtual void AddObject() = 0;
-	virtual void CallFunctionsForObjects() = 0;
-
 	PerFrameFunctionCaller() {}
 	virtual ~PerFrameFunctionCaller() {}
+
+	virtual void CallFunctionsForObjects() = 0;
 };
 
 
 template <typename ObjectType, typename FuncReturnType, typename... FuncArgs>
-class SpecifiedPerFrameFunctionCaller : PerFrameFunctionCaller {
+class SpecifiedPerFrameFunctionCaller : public PerFrameFunctionCaller {
 
+// ctor & dtor
+public:
+	SpecifiedPerFrameFunctionCaller(){}
+
+// interface
+public:
+	void SetTimeBudgetPerFrame(double Milliseconds);
+	void SetFunctionToCallFromObjects(std::function<FuncReturnType(ObjectType*, FuncArgs... Args)> NewFunction);
+	void AddObject(ObjectType*const ObjectToAdd);
+	virtual void CallFunctionsForObjects() override;
+
+// members
+private:
 	std::function<FuncReturnType(ObjectType*, FuncArgs... Args)> AFunctionToCall;
 
 	//Change vector to TSet
 	std::vector<ObjectType*> ObjectsToCallAFunctionFor;
-	double TimeBudgetInMilliseconds;
-
-public:
-	void SetTimeBudgetPerFrame(double Milliseconds);
-	void SetFunctionToCallFromObjects(std::function<FuncReturnType(ObjectType*, FuncArgs... Args)> NewFunction);
-	void AddObject(ObjectType* ObjectToAdd);
-	void CallFunctionsForObjects();
+	double TimeBudgetInMilliseconds{};
 };
 
 template <typename ObjectType, typename FuncReturnType, typename... FuncArgs>
@@ -55,6 +59,7 @@ void SpecifiedPerFrameFunctionCaller<ObjectType, FuncReturnType, FuncArgs...>::C
 	for (auto CurrentObject : ObjectsToCallAFunctionFor) {
 		AFunctionToCall(CurrentObject, FuncArgs...);
 	}
+	/*implement removing objects after executing a function*/
 }
 
 template <typename ObjectType, typename FuncReturnType, typename... FuncArgs>
@@ -64,7 +69,7 @@ void SpecifiedPerFrameFunctionCaller<ObjectType, FuncReturnType, FuncArgs...>::S
 }
 
 template <typename ObjectType, typename FuncReturnType, typename... FuncArgs>
-void SpecifiedPerFrameFunctionCaller<ObjectType, FuncReturnType, FuncArgs...>::AddObject(ObjectType* ObjectToAdd) {
+void SpecifiedPerFrameFunctionCaller<ObjectType, FuncReturnType, FuncArgs...>::AddObject(ObjectType*const ObjectToAdd) {
 	ObjectsToCallAFunctionFor.push_back(ObjectToAdd);
 }
 
@@ -81,19 +86,29 @@ int main() {
 	SecondClass* c = new SecondClass("Name is c");
 	SecondClass* d = new SecondClass("Name is d");
 
-	SpecifiedPerFrameFunctionCaller<FirstClass, void> FirstClassFunctionCaller;
-	FirstClassFunctionCaller.SetTimeBudgetPerFrame(4.f);
-	FirstClassFunctionCaller.SetFunctionToCallFromObjects(&FirstClass::Hello);
-	FirstClassFunctionCaller.AddObject(a);
-	FirstClassFunctionCaller.AddObject(b);
-	FirstClassFunctionCaller.CallFunctionsForObjects();
 
-	SpecifiedPerFrameFunctionCaller<SecondClass, void> SecondClassFunctionCaller;
-	SecondClassFunctionCaller.SetTimeBudgetPerFrame(4.f);
-	SecondClassFunctionCaller.SetFunctionToCallFromObjects(&SecondClass::Hello);
-	SecondClassFunctionCaller.AddObject(c);
-	SecondClassFunctionCaller.AddObject(d);
-	SecondClassFunctionCaller.CallFunctionsForObjects();
+	std::vector<PerFrameFunctionCaller*> Callers;
+
+	SpecifiedPerFrameFunctionCaller<FirstClass, void>* FirstClassFunctionCaller = new SpecifiedPerFrameFunctionCaller<FirstClass, void>();
+	FirstClassFunctionCaller->SetTimeBudgetPerFrame(4.f);
+	FirstClassFunctionCaller->SetFunctionToCallFromObjects(&FirstClass::Hello);
+	FirstClassFunctionCaller->AddObject(a);
+	FirstClassFunctionCaller->AddObject(b);
+
+
+
+	Callers.push_back(FirstClassFunctionCaller);
+
+	SpecifiedPerFrameFunctionCaller<SecondClass, void>* SecondClassFunctionCaller = new SpecifiedPerFrameFunctionCaller<SecondClass, void>();
+	SecondClassFunctionCaller->SetTimeBudgetPerFrame(4.f);
+	SecondClassFunctionCaller->SetFunctionToCallFromObjects(&SecondClass::Hello);
+	SecondClassFunctionCaller->AddObject(c);
+	SecondClassFunctionCaller->AddObject(d);
+	Callers.push_back(SecondClassFunctionCaller);
+
+	for (PerFrameFunctionCaller* Caller : Callers) {
+		Caller->CallFunctionsForObjects();
+	}
 
 	return 0;
 }
