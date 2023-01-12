@@ -59,7 +59,12 @@ void SpecifiedPerFrameFunctionCaller<ObjectType, FuncReturnType, FuncArgs...>::C
 	for (auto CurrentObject : ObjectsToCallAFunctionFor) {
 		AFunctionToCall(CurrentObject, FuncArgs...);
 	}
-	/*implement removing objects after executing a function*/
+
+	// For TSet in UE4
+	//for (int i = 0; i < ObjectsToCallAFunctionFor.Num(); ++i) {
+	//	AFunctionToCall(ObjectsToCallAFunctionFor[i], FuncArgs...);
+	//	ObjectsToCallAFunctionFor.remove(i);
+	//}
 }
 
 template <typename ObjectType, typename FuncReturnType, typename... FuncArgs>
